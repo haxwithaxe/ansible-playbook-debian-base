@@ -1,0 +1,8 @@
+---
+
+- name: "Add authorized keys from {{ user.name }} config"
+  lineinfile:
+    line: "{{ item }}"
+    path: "{{ user.home_dir | default(['/home', user.name]|join('/')) }}.ssh/authorized_keys"
+    state: present
+  loop: "{{ user.pubkeys | default([]) }}"

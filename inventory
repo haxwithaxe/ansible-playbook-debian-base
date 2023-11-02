@@ -1,0 +1,7 @@
+# There would normally be a long list of hosts here
+example-laptop
+example-noninteractive-server
+
+# image build hosts
+ubuntu
+debian-12

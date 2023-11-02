@@ -1,0 +1,15 @@
+---
+
+- name: "Getting {{ url }} for {{ user.name }}"
+  get_url:
+    url: "{{ url }}"
+    dest: "{{ user.home_dir }}/.ssh/.authorized_keys.d/{{ url | checksum }}"
+    mode: 0600
+    owner: "{{ user.name }}"
+    group: "{{ user.name }}"
+  register: _downloaded_from_url
+
+- name: Set indicator of new download
+  set_fact:
+    downloaded_from_urls: true
+  when: _downloaded_from_url.changed

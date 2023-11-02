@@ -1,0 +1,39 @@
+---
+
+users:
+  - name: "hax"
+    home_dir: "/home/hax"
+    groups:
+      - "ssh-users"
+    append_groups: yes
+    pubkeys_from_github_user: haxwithaxe
+    pubkeys_from_urls:
+      - "https://<my local gitea server>/haxwithaxe/pubkeys/raw/branch/main/automation"
+    ssh_user: yes
+    no_password: no
+    password: "<password hash>"
+    sudo_no_password: yes
+  - name: "root"
+    home_dir: "/root"
+
+required_groups:
+  - name: ssh-users
+  - name: docker
+    gid: 998
+    system: yes
+
+no_passwords: no
+sshd_allowed_ssh_users_group: ssh-users
+sshd_moduli_size: 2048
+sshd_rsa_host_key_size: 8192
+
+apt_no_recommends: yes
+apt_no_suggests: yes
+apt_unattended_upgrades: yes
+apt_unattended_upgrades_mail: hax@localhost
+
+extra_packages:
+  - x11-xserver-utils
+  - xserver-xorg-input-libinput
+  - xserver-xorg-input-synaptics
+  - xserver-xorg-video-nouveau

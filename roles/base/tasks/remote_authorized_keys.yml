@@ -1,0 +1,47 @@
+---
+
+# Creates a ~/.ssh/.authorized_keys.d directory that persists to preserve the
+#   ability of ansible to measure idempotency.
+- name: "Ensure authorized_keys.d exists for {{ user.name }}"
+  file:
+    path: "{{ user.home_dir }}/.ssh/.authorized_keys.d"
+    state: directory
+    mode: 0700
+
+- name: "Get github pubkeys for {{ user.name }}"
+  get_url:
+    url: "https://github.com/{{ user.pubkeys_from_github_user }}.keys"
+    dest: "{{ user.home_dir }}/.ssh/.authorized_keys.d/github"
+    mode: 0600
+    owner: "{{ user.name }}"
+    group: "{{ user.name }}"
+  register: github_keys_download
+  when: user.pubkeys_from_github_user | default('') | length > 0
+
+- name: "Get gitlab pubkeys for {{ user.name }}"
+  get_url:
+    url: "https://gitlab.com/{{ user.pubkeys_from_gitlab_user }}.keys"
+    dest: "{{ user.home_dir }}/.ssh/.authorized_keys.d/gitlab"
+    mode: 0600
+    owner: "{{ user.name }}"
+    group: "{{ user.name }}"
+  register: gitlab_keys_download
+  when: user.pubkeys_from_gitlab_user | default('') | length > 0
+
+- name: Initialize indicator of new download
+  set_fact:
+    downloaded_from_urls: false
+  changed_when: no
+
+- name: "Get pubkeys from urls for {{ user.name }}"
+  include_tasks: remote_authorized_keys_from_url.yml
+  loop: "{{ user.pubkeys_from_urls | default([]) }}"
+  loop_control:
+    loop_var: url
+
+- name: Concatenate authorized_keys files
+  assemble:
+    src: "{{ user.home_dir }}/.ssh/.authorized_keys.d"
+    dest: "{{ user.home_dir }}/.ssh/authorized_keys"
+    remote_src: yes
+  when: github_keys_download.changed or gitlab_keys_download.changed or downloaded_from_urls

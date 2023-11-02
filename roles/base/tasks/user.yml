@@ -1,0 +1,42 @@
+---
+
+- name: Compile user groups list
+  set_fact:
+    user_groups: "{{ user.groups | default([]) }}"
+
+- name: Add the ssh users group to the user groups list
+  set_fact:
+    user_groups: "{{ user_groups + [sshd_allowed_ssh_users_group] }}"
+  when: user.ssh_user | default(false)
+
+- name: Add user
+  user:
+    name: "{{ user.name }}"
+    home: "{{ user.home_dir
+      | default(['/home', user.name]|join('/')) }}"
+    groups: "{{ user_groups | unique }}"
+    append: "{{ user.append_groups | default(false) }}"
+    password: "{{ user.password | default('*') }}"
+    state: present
+  when: user.name != 'root'
+
+- name: Setup SSH authorized_keys
+  when: user.ssh_user | default(false)
+  block:
+    ## Compile SSH authorized keys
+    - name: Add authorized_keys from remote sources
+      include_tasks: remote_authorized_keys.yml
+
+    # Run this after the remote key import which would overwrite this set of
+    #   changes
+    - name: Add authorized_keys from config
+      include_tasks: config_authorized_keys.yml
+      when: user.pubkeys | default([]) | length > 0
+
+    - name: Fix owner for .ssh
+      file:
+        path: "{{ user.home_dir }}/.ssh"
+        owner: "{{ user.name }}"
+        mode: "u=rwX,g=,o="
+        recurse: yes
+        state: directory

@@ -1,0 +1,22 @@
+---
+
+users:
+  - name: "hax"
+    home_dir: "/home/hax"
+    pubkeys_from_github_user: haxwithaxe
+    ssh_user: yes
+    no_password: yes
+    sudo_no_password: yes
+  - name: "root"
+    home_dir: "/root"
+
+required_groups:
+  - name: ssh-users
+
+no_passwords: yes
+sshd_allowed_ssh_users_group: ssh-users
+sshd_moduli_size: 2048
+sshd_rsa_host_key_size: 8192
+
+apt_no_recommends: no
+apt_no_suggests: yes

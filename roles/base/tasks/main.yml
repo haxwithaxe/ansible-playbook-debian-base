@@ -1,0 +1,120 @@
+---
+
+# If no_passwords and user does not have pubkey, is not in the ssh allowed
+#   group, and does not have sudo fail now. That would make a system that
+#   can't be logged into.
+- name: Validate user config
+  fail:
+    msg: "no_passwords is true and {{ item.name }} does not have pubkey, is not in the ssh allowed group, and does not have sudo"
+  when: item.name != 'root' and no_passwords and item.ssh_user and not (item.pubkeys is defined or item.pubkeys_from_github_user is defined or item.pubkeys_from_gitlab_user is defined or item.pubkeys_from_url is defined)
+  loop: "{{ users }}"
+  changed_when: no
+
+# Configure Apt
+- name: Enable unattended upgrades
+  include_role: 
+    name: jnv.unattended-upgrades
+  vars:
+    unattended_mail: "{{ apt_unattended_upgrades_mail }}"
+  when: apt_unattended_upgrades | default('no') | bool
+
+- name: Ensure /etc/apt.conf.d/99-norec-nosug.conf exists if needed
+  file:
+    path: /etc/apt/apt.conf.d/99-norec-nosug.conf
+    state: touch
+  when: apt_no_recommends or apt_no_suggests
+
+- name: Disable automatic recommends
+  lineinfile:
+    regex: 'APT::Install-Recommends ".*";'
+    line: 'APT::Install-Recommends "0";'
+    path: /etc/apt/apt.conf.d/99-norec-nosug.conf
+  when: apt_no_recommends
+
+- name: Disable automatic suggests
+  lineinfile:
+    regex: 'APT::Install-Suggests ".*";'
+    line: 'APT::Install-Suggests "0";'
+    path: /etc/apt/apt.conf.d/99-norec-nosug.conf
+  when: apt_no_suggests
+
+# Install extra packages given in host_vars
+- name: Install extra packages
+  apt:
+    name: "{{ extra_packages }}"
+    state: latest
+  when: ( extra_packages | default([]) | length ) > 0
+
+
+# Tools
+- name: Install basic tools
+  apt:
+    name:
+      - neovim
+      - screen
+      - iputils-ping
+      - psmisc
+    state: latest
+
+- name: Install basic tools with recommends
+  apt:
+    name:
+      - bash-completion
+    install_recommends: yes
+    state: latest
+
+
+# Sudoers
+- name: Install sudo
+  apt:
+    name:
+      - sudo
+    state: latest
+
+- name: Create sudoers files
+  copy:
+    content: "{{ item.name }} ALL=(ALL) NOPASSWD: ALL"
+    dest: "/etc/sudoers.d/{{ item.name }}"
+  when: item.sudo_no_password | default('no') | bool
+  loop: "{{ users }}"
+
+- name: Install additional sudoers files
+  copy:
+    src: "files/sudoers.d/{{ item }}"
+    dest: "/etc/sudoers.d/{{ item }}"
+  loop: "{{ sudoers_files | default([]) }}"
+
+- name: Ensure sudoers.d is included
+  lineinfile:
+    dest: /etc/sudoers
+    line: "@includedir /etc/sudoers.d"
+    state: present
+
+- name: Validate sudoers config
+  shell: "visudo -cf /etc/sudoers"
+  changed_when: no
+
+
+# Users and Groups
+- name: Add groups
+  include_tasks: group.yml
+  loop: "{{ required_groups | default([]) }}"
+
+- name: Ensure SSH users group exists
+  group:
+    name: "{{ sshd_allowed_ssh_users_group }}"
+    state: present
+
+- name: Add users
+  include_tasks: user.yml
+  loop: "{{ users }}"
+  loop_control:
+    loop_var: user
+
+- name: Configure root user
+  user:
+    name: "root"
+    password: "{{ item.password | default('*') }}"
+    state: present
+  when: item.name == 'root'
+  loop: "{{ users }}"

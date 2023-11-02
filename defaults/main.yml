@@ -1,0 +1,15 @@
+---
+
+disable_suggests: yes
+disable_recommends: yes
+no_passwords: yes
+sudoers: []
+sudoers_files: []
+sshd_disable_forwarding: yes
+sshd_disable_ecdsa: yes
+sshd_allowed_ssh_users: []
+sshd_allowed_ssh_users_group: ssh-users
+sshd_moduli_size: 1024
+sshd_rsa_host_key_size: 4096
+apt_no_recommends: no
+apt_no_suggests: yes
